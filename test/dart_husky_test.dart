@@ -216,6 +216,90 @@ void main() {
       );
       expect(config.appendTypes, equals(['wip', 'release']));
     });
+
+    test('description reports the preset', () {
+      const config = CommitMsgCommandConfig(preset: 'conventional');
+      expect(config.description, equals('preset: conventional'));
+    });
+
+    test('description reports appended types', () {
+      const config = CommitMsgCommandConfig(
+        preset: 'conventional',
+        appendTypes: ['wip', 'release'],
+      );
+      expect(
+        config.description,
+        equals('preset: conventional — types appended: wip, release'),
+      );
+    });
+
+    test('description reports overridden types', () {
+      const config = CommitMsgCommandConfig(
+        preset: 'conventional',
+        overrideTypes: ['ticket'],
+      );
+      expect(
+        config.description,
+        equals('preset: conventional — types overridden: ticket'),
+      );
+    });
+
+    test('description prefers override over append when both are set', () {
+      const config = CommitMsgCommandConfig(
+        preset: 'conventional',
+        appendTypes: ['wip'],
+        overrideTypes: ['ticket'],
+      );
+      expect(config.description, contains('types overridden: ticket'));
+      expect(config.description, isNot(contains('appended')));
+    });
+
+    test('description notes when the lowercase check is disabled', () {
+      const config = CommitMsgCommandConfig(
+        preset: 'conventional',
+        onlySmallCase: false,
+      );
+      expect(config.description, contains('lowercase check off'));
+    });
+  });
+
+  group('HookConfig.commandCount', () {
+    test('counts shell commands', () {
+      const config = HookConfig(
+        commands: {
+          'format': CommandConfig(run: 'dart format .'),
+          'analyze': CommandConfig(run: 'dart analyze'),
+        },
+      );
+      expect(config.commandCount, equals(2));
+    });
+
+    // Regression: `dart_husky list` reported "0 command(s)" for commit-msg
+    // because it read `commands`, but the parser stores commit-msg entries
+    // in `msgCommands`.
+    test('counts commit-msg commands held in msgCommands', () {
+      const config = HookConfig(
+        msgCommands: {
+          'conventional': CommitMsgCommandConfig(preset: 'conventional'),
+        },
+      );
+      expect(config.commandCount, equals(1));
+    });
+
+    test('counts both maps together', () {
+      const config = HookConfig(
+        commands: {'format': CommandConfig(run: 'dart format .')},
+        msgCommands: {
+          'conventional': CommitMsgCommandConfig(preset: 'conventional'),
+        },
+      );
+      expect(config.commandCount, equals(2));
+    });
+
+    test('is zero when no commands are configured', () {
+      const config = HookConfig();
+      expect(config.commandCount, equals(0));
+    });
   });
 
   group('CommandConfig — preset', () {
