@@ -73,6 +73,12 @@ class HookConfig {
     this.commands = const {},
     this.msgCommands = const {},
   });
+
+  /// Total number of commands configured for this hook.
+  ///
+  /// commit-msg commands live in [msgCommands] rather than [commands], so
+  /// both have to be counted for the total to be correct.
+  int get commandCount => commands.length + msgCommands.length;
 }
 
 /// Represents one named shell command inside a hook
@@ -116,4 +122,19 @@ class CommitMsgCommandConfig {
     this.overrideTypes = const [],
     this.onlySmallCase = true,
   });
+
+  /// Human-readable summary of this command, used by `dart_husky list`.
+  String get description {
+    final buffer = StringBuffer('preset: $preset');
+
+    if (overrideTypes.isNotEmpty) {
+      buffer.write(' — types overridden: ${overrideTypes.join(', ')}');
+    } else if (appendTypes.isNotEmpty) {
+      buffer.write(' — types appended: ${appendTypes.join(', ')}');
+    }
+
+    if (!onlySmallCase) buffer.write(' — lowercase check off');
+
+    return buffer.toString();
+  }
 }

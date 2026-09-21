@@ -22,12 +22,17 @@ class ListCommand {
       final isInstalled = _isInstalled(hookType);
 
       print(
-        '  ${hookType.scriptName.padRight(20)} ${isInstalled ? '✅ installed' : '❌ not installed'} — ${hookConfig.commands.length} command(s)',
+        '  ${hookType.scriptName.padRight(20)} ${isInstalled ? '✅ installed' : '❌ not installed'} — ${hookConfig.commandCount} command(s)',
       );
 
       for (final cmd in hookConfig.commands.entries) {
         final desc = cmd.value.run ?? 'preset: ${cmd.value.preset}';
         print('    • ${cmd.key}: $desc');
+      }
+
+      // commit-msg commands are parsed into msgCommands, not commands
+      for (final cmd in hookConfig.msgCommands.entries) {
+        print('    • ${cmd.key}: ${cmd.value.description}');
       }
       print('');
     }
