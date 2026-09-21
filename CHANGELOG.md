@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.1](https://github.com/moulibheemaneti/dart_husky/compare/dart_husky-v1.9.0...dart_husky-v1.9.1) (2026-09-21)
+
+
+### Bug Fixes
+
+* make the example runnable and document every config option ([#25](https://github.com/moulibheemaneti/dart_husky/issues/25)) ([611cb53](https://github.com/moulibheemaneti/dart_husky/commit/611cb5399d2d400b43455bbcd5682a1651c0bc56))
+
 ## [1.9.0](https://github.com/moulibheemaneti/dart_husky/compare/dart_husky-v1.8.1...dart_husky-v1.9.0) (2026-09-21)
 
 
