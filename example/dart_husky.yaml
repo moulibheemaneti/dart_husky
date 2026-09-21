@@ -1,0 +1,49 @@
+# Complete dart_husky configuration reference.
+#
+# Copy this file to your project root as `dart_husky.yaml`, trim what you
+# don't need, then run `dart run dart_husky install`.
+
+# Global defaults — applied to every command unless overridden per-command.
+dart_husky:
+  verbose: true # print detailed output (default: true)
+  staged_only: false # run on staged files only (default: false)
+
+pre-commit:
+  parallel: true # run the commands below simultaneously (default: false)
+  commands:
+    format:
+      run: dart format --set-exit-if-changed .
+      glob: '**/*.dart' # skip entirely if no staged file matches
+    analyze:
+      run: dart analyze
+      glob: '**/*.dart'
+    test:
+      run: dart test
+      staged_only: false # override the global default for this command
+
+commit-msg:
+  commands:
+    conventional:
+      preset: conventional
+      # Add project-specific types on top of the built-in Conventional
+      # Commits types. Use `override:` instead to replace them entirely —
+      # setting both at once is rejected by the parser.
+      types:
+        append: [wip, release]
+
+pre-push:
+  commands:
+    test:
+      run: dart test
+
+# Other supported hooks: post-checkout, pre-merge-commit.
+
+# --- Melos monorepos -------------------------------------------------------
+# Replace a command's `run` with the `melos` preset to run tests per package.
+# A command may set `preset` or `run`, never both.
+#
+# pre-commit:
+#   commands:
+#     test:
+#       preset: melos
+#       staged_only: true # only packages that contain staged files
