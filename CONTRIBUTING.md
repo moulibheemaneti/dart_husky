@@ -2,6 +2,10 @@
 
 Thanks for taking the time to contribute! Please read this guide before opening an issue or pull request.
 
+## Code of Conduct
+
+This project follows the [Contributor Covenant Code of Conduct](./CODE_OF_CONDUCT.md). By participating, you agree to uphold it.
+
 ## Getting started
 
 **Prerequisites:** Dart SDK ≥ 3.0.0 (or Flutter, or [FVM](https://fvm.app/)).
