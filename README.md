@@ -106,6 +106,37 @@ dart run dart_husky run pre-commit
 
 # List configured hooks and install status
 dart run dart_husky list
+
+# Check that the installed hooks match dart_husky.yaml (for scripts and CI)
+dart run dart_husky check
+```
+
+### Checking hooks in scripts
+
+`check` compares every hook in `.git/hooks/` with what `install` would write today, prints one line per hook, and reports the result through its exit code:
+
+| Exit code | Meaning |
+|---|---|
+| `0` | Every configured hook is installed and up to date, and no leftover dart_husky hooks remain |
+| `1` | At least one hook is missing, foreign (not written by dart_husky), outdated, or stale (installed but no longer in `dart_husky.yaml`). `dart run dart_husky install` fixes it, replacing any foreign hook |
+| `2` | The check couldn't run: no `dart_husky.yaml`, an invalid one, or no `.git/hooks` folder (not a git repository) |
+
+```
+$ dart run dart_husky check
+pre-commit: in sync
+commit-msg: outdated (differs from what install would write) - run "dart run dart_husky install" to fix
+```
+
+Use it in a setup script to install hooks only when they need it:
+
+```sh
+#!/bin/sh
+dart run dart_husky check
+case $? in
+  0) ;;                             # hooks are up to date
+  1) dart run dart_husky install ;; # missing or out of date
+  *) exit 1 ;;                      # couldn't check, reason printed above
+esac
 ```
 
 ---
