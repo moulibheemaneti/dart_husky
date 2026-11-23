@@ -54,17 +54,29 @@ class GitUtils {
 
   /// Returns a list of currently staged, non-deleted file paths
   /// Returns empty list if no files are staged
-  static Future<List<String>> getStagedFiles({String? workingDirectory}) async {
+  ///
+  /// By default git inherits this process's environment, including the
+  /// `GIT_DIR` and `GIT_INDEX_FILE` that git exports to hooks. A hook needs
+  /// them: during `git commit -a` the staged files are in a temporary index
+  /// that only `GIT_INDEX_FILE` points to. Pass [environment] to run git
+  /// with exactly that environment instead.
+  static Future<List<String>> getStagedFiles({
+    String? workingDirectory,
+    Map<String, String>? environment,
+  }) async {
     final result = await Process.run(
-        'git',
-        [
-          'diff',
-          '--cached',
-          '--name-only',
-          '--diff-filter=ACMR',
-        ],
-        runInShell: true,
-        workingDirectory: workingDirectory);
+      'git',
+      [
+        'diff',
+        '--cached',
+        '--name-only',
+        '--diff-filter=ACMR',
+      ],
+      runInShell: true,
+      workingDirectory: workingDirectory,
+      environment: environment,
+      includeParentEnvironment: environment == null,
+    );
 
     if (result.exitCode != 0) return [];
 

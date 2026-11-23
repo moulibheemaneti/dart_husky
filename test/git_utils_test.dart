@@ -34,7 +34,11 @@ void main() {
       await runGit(repository.path, ['add', '--all']);
 
       expect(
-        await GitUtils.getStagedFiles(workingDirectory: repository.path),
+        await GitUtils.getStagedFiles(
+          workingDirectory: repository.path,
+          // ignore the git variables of a hook that may be running the tests
+          environment: isolatedGitEnvironment(),
+        ),
         ['retained.dart'],
       );
     });
