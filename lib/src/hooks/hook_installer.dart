@@ -5,6 +5,7 @@ import 'package:path/path.dart' as path;
 
 import '../config/config_model.dart';
 import '../utils/git_utils.dart';
+import 'hook_status.dart';
 
 class HookInstaller {
   /// The comment every hook script written by dart_husky contains.
@@ -119,14 +120,42 @@ class HookInstaller {
     return canonical(a) == canonical(b);
   }
 
-  /// Contents of the [hookType] hook file in [hooksDirectory], or null if
-  /// there is no such file.
-  static String? readHook(Directory hooksDirectory, HookType hookType) {
-    final hookFile = File(path.join(hooksDirectory.path, hookType.scriptName));
-    if (!hookFile.existsSync()) return null;
+  /// Reads the [hookType] hook file in [hooksDirectory], if there is one,
+  /// and works out its [HookStatus]. [hooksDirectory] may be null when there
+  /// is no git repository, in which case there are no hook files.
+  static HookStatus? readStatus(
+    Directory? hooksDirectory,
+    HookType hookType, {
+    required bool isConfigured,
+  }) {
+    final hookFile = hooksDirectory == null
+        ? null
+        : File(path.join(hooksDirectory.path, hookType.scriptName));
 
-    // Hand-written hooks are not guaranteed to be valid UTF-8.
-    return utf8.decode(hookFile.readAsBytesSync(), allowMalformed: true);
+    if (hookFile == null || !hookFile.existsSync()) {
+      return HookStatus.of(
+        hookType,
+        contents: null,
+        isConfigured: isConfigured,
+      );
+    }
+
+    return HookStatus.of(
+      hookType,
+      // Hand-written hooks are not guaranteed to be valid UTF-8.
+      contents: utf8.decode(hookFile.readAsBytesSync(), allowMalformed: true),
+      isConfigured: isConfigured,
+      isExecutable: _isExecutable(hookFile),
+    );
+  }
+
+  /// Whether git can run [hookFile]. Git for Windows runs hooks without an
+  /// executable bit; elsewhere git skips a hook without one.
+  static bool _isExecutable(File hookFile) {
+    if (Platform.isWindows) return true;
+
+    const ownerExecute = 0x40; // 0o100, the bit `chmod +x` sets for the owner
+    return (hookFile.statSync().mode & ownerExecute) != 0;
   }
 
   /// The hook script that [install] writes for [hookType].

@@ -13,7 +13,8 @@ class CheckCommand {
   /// Every configured hook is in sync and nothing is stale.
   static const exitInSync = 0;
 
-  /// At least one hook is missing, foreign, outdated or stale.
+  /// At least one hook is missing, foreign, outdated, stale or not
+  /// executable.
   static const exitOutOfSync = 1;
 
   /// The check could not run: no dart_husky.yaml, an invalid one, or not
@@ -56,9 +57,9 @@ class CheckCommand {
     var allInSync = true;
 
     for (final hookType in HookType.values) {
-      final status = HookStatus.of(
+      final status = HookInstaller.readStatus(
+        hooksDirectory,
         hookType,
-        contents: HookInstaller.readHook(hooksDirectory, hookType),
         isConfigured: config.hooks.containsKey(hookType),
       );
       if (status == null) continue;

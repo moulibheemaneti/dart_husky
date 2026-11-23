@@ -118,7 +118,7 @@ dart run dart_husky check
 | Exit code | Meaning |
 |---|---|
 | `0` | Every configured hook is installed and up to date, and no leftover dart_husky hooks remain |
-| `1` | At least one hook is missing, foreign (not written by dart_husky), outdated, or stale (installed but no longer in `dart_husky.yaml`). `dart run dart_husky install` fixes it, replacing any foreign hook |
+| `1` | At least one hook is missing, foreign (not written by dart_husky), outdated, stale (installed but no longer in `dart_husky.yaml`), or not executable (git skips it). `dart run dart_husky install` fixes it, replacing any foreign hook |
 | `2` | The check couldn't run: no `dart_husky.yaml`, an invalid one, or not run from the root of a git repository |
 
 ```

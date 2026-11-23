@@ -65,6 +65,47 @@ void main() {
       expect(status, HookStatus.stale);
     });
 
+    test('notExecutable when the file is in sync but not executable', () {
+      final status = HookStatus.of(
+        HookType.commitMsg,
+        contents: HookInstaller.generateScript(HookType.commitMsg),
+        isConfigured: true,
+        isExecutable: false,
+      );
+      expect(status, HookStatus.notExecutable);
+    });
+
+    test('content problems win over a missing executable bit', () {
+      const isExecutable = false;
+      expect(
+        HookStatus.of(
+          HookType.preCommit,
+          contents: '#!/bin/sh\n${HookInstaller.generatedMarker}\n',
+          isConfigured: true,
+          isExecutable: isExecutable,
+        ),
+        HookStatus.outdated,
+      );
+      expect(
+        HookStatus.of(
+          HookType.preCommit,
+          contents: foreignScript,
+          isConfigured: true,
+          isExecutable: isExecutable,
+        ),
+        HookStatus.foreign,
+      );
+      expect(
+        HookStatus.of(
+          HookType.prePush,
+          contents: HookInstaller.generateScript(HookType.prePush),
+          isConfigured: false,
+          isExecutable: isExecutable,
+        ),
+        HookStatus.stale,
+      );
+    });
+
     test('stale even if the unconfigured generated file is outdated', () {
       final status = HookStatus.of(
         HookType.prePush,

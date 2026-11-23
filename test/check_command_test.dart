@@ -53,9 +53,13 @@ void main() {
     File('${project.path}/dart_husky.yaml').writeAsStringSync(content);
   }
 
-  void writeHook(HookType hookType, String content) {
-    File('${project.path}/.git/hooks/${hookType.scriptName}')
-        .writeAsStringSync(content);
+  /// Writes a hook file and, like install, makes it executable.
+  void writeHook(HookType hookType, String content, {bool executable = true}) {
+    final hookPath = '${project.path}/.git/hooks/${hookType.scriptName}';
+    File(hookPath).writeAsStringSync(content);
+    if (executable && !Platform.isWindows) {
+      Process.runSync('chmod', ['+x', hookPath]);
+    }
   }
 
   group('CheckCommand in a git repository', () {
@@ -130,6 +134,27 @@ void main() {
         'commit-msg: outdated (differs from what install would write)$_fix',
       ]);
     });
+
+    test(
+      'exits 1 when a hook is not executable',
+      () {
+        _inDirectory(project, () => InstallCommand().run());
+        final hookPath = '${project.path}/.git/hooks/pre-commit';
+        Process.runSync('chmod', ['-x', hookPath]);
+
+        expect(check(), CheckCommand.exitOutOfSync);
+        expect(lines(out), [
+          'pre-commit: not executable (git will skip it)$_fix',
+          'commit-msg: in sync',
+        ]);
+
+        // install makes it executable again
+        _inDirectory(project, () => InstallCommand().run());
+        out.clear();
+        expect(check(), CheckCommand.exitInSync);
+      },
+      testOn: '!windows',
+    );
 
     test('exits 1 when an unconfigured hook is stale', () {
       _inDirectory(project, () => InstallCommand().run());
@@ -364,6 +389,23 @@ void main() {
         '  commit-msg           ❌ not installed — 1 command(s)',
       ]);
     });
+
+    test(
+      'shows a hook without the executable bit as not executable',
+      () {
+        writeHook(
+          HookType.preCommit,
+          HookInstaller.generateScript(HookType.preCommit),
+          executable: false,
+        );
+
+        expect(
+          statusLines().first,
+          '  pre-commit           ⚠️  not executable — 1 command(s)',
+        );
+      },
+      testOn: '!windows',
+    );
 
     test('does not show installed for foreign or outdated hooks', () {
       writeHook(HookType.preCommit, '#!/bin/sh\necho custom\n');

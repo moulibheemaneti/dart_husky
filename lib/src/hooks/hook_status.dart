@@ -19,7 +19,11 @@ enum HookStatus {
 
   /// dart_husky generated the hook file, but the hook is no longer
   /// configured in dart_husky.yaml.
-  stale('stale (installed but not configured in dart_husky.yaml)');
+  stale('stale (installed but not configured in dart_husky.yaml)'),
+
+  /// The hook file is what `install` would write, but it isn't executable,
+  /// so git skips it.
+  notExecutable('not executable (git will skip it)');
 
   /// Plain-text description, used by `dart_husky check`.
   final String description;
@@ -31,6 +35,8 @@ enum HookStatus {
   ///
   /// [contents] is the hook file's contents, or null if there is no file.
   /// [isConfigured] says whether dart_husky.yaml configures [hookType].
+  /// [isExecutable] says whether git can run the file; it only matters when
+  /// the contents are otherwise in sync.
   ///
   /// Returns null when there is nothing for dart_husky to report: the hook
   /// is not configured and there is either no file or a file that
@@ -39,6 +45,7 @@ enum HookStatus {
     HookType hookType, {
     required String? contents,
     required bool isConfigured,
+    bool isExecutable = true,
   }) {
     if (contents == null) return isConfigured ? missing : null;
 
@@ -47,8 +54,8 @@ enum HookStatus {
     if (!isConfigured) return isGenerated ? stale : null;
     if (!isGenerated) return foreign;
 
-    return contents == HookInstaller.generateScript(hookType)
-        ? inSync
-        : outdated;
+    if (contents != HookInstaller.generateScript(hookType)) return outdated;
+
+    return isExecutable ? inSync : notExecutable;
   }
 }
