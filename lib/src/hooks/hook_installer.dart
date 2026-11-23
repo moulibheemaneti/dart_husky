@@ -4,10 +4,9 @@ import 'dart:io';
 import 'package:path/path.dart' as path;
 
 import '../config/config_model.dart';
+import '../utils/git_utils.dart';
 
 class HookInstaller {
-  static const _hooksDir = '.git/hooks';
-
   /// The comment every hook script written by dart_husky contains.
   ///
   /// Used to tell dart_husky's own hooks apart from hand-written ones.
@@ -15,6 +14,8 @@ class HookInstaller {
 
   static void install(GitHooksConfig config) {
     final hooksDirectory = HookInstaller.hooksDirectory();
+    // core.hooksPath may name a folder that doesn't exist yet
+    hooksDirectory.createSync(recursive: true);
 
     // Always clean all known hooks first, then reinstall from config
     for (final hookType in HookType.values) {
@@ -26,7 +27,7 @@ class HookInstaller {
     }
   }
 
-  /// Removes all dart_husky managed hook files from .git/hooks/
+  /// Removes all dart_husky managed hook files from the git hooks folder
   static void uninstall(GitHooksConfig config) {
     final hooksDirectory = HookInstaller.hooksDirectory();
 
@@ -56,30 +57,66 @@ class HookInstaller {
     }
   }
 
-  /// Path of the git hooks folder for [projectDirectory]
-  /// (defaults to [Directory.current]). The folder may not exist.
-  static String hooksPath([Directory? projectDirectory]) {
-    final root = projectDirectory ?? Directory.current;
-    return path.join(root.path, _hooksDir);
-  }
-
-  /// The git hooks folder for [projectDirectory]
-  /// (defaults to [Directory.current]).
+  /// The folder git reads hooks from for the project in [projectDirectory]
+  /// (defaults to [Directory.current]), as reported by git: `.git/hooks` by
+  /// default, `core.hooksPath` if set, and the main repository's hooks
+  /// folder in a linked worktree. The folder may not exist yet.
   ///
-  /// Throws a [FileSystemException] if the folder does not exist, for
-  /// example because [projectDirectory] is not a git repository.
+  /// Throws a [FileSystemException] if git isn't installed, or if
+  /// [projectDirectory] isn't the top-level directory of a git work tree.
+  /// The generated hooks run dart_husky from there, so it has to be the
+  /// project root.
   static Directory hooksDirectory([Directory? projectDirectory]) {
-    final hooksPath = HookInstaller.hooksPath(projectDirectory);
-    final hooksDirectory = Directory(hooksPath);
+    final root = projectDirectory ?? Directory.current;
+    final ({String topLevel, String hooksPath})? repository;
 
-    if (!hooksDirectory.existsSync()) {
+    try {
+      repository = GitUtils.findHooks(root.path);
+    } on ProcessException {
       throw FileSystemException(
-        'No .git/hooks directory found. Are you in a git repository?',
-        hooksPath,
+        'git not found. Install git and make sure it is in your PATH.',
+        root.path,
       );
     }
 
-    return hooksDirectory;
+    if (repository == null) {
+      throw FileSystemException(
+        'Not a git repository. Run dart_husky from the root of your git repository.',
+        root.path,
+      );
+    }
+
+    if (!_isSameDirectory(repository.topLevel, root.path)) {
+      throw FileSystemException(
+        'Run dart_husky from the root of your git repository: ${repository.topLevel}',
+        root.path,
+      );
+    }
+
+    return Directory(repository.hooksPath);
+  }
+
+  /// Like [hooksDirectory], but returns null instead of throwing.
+  static Directory? findHooksDirectory([Directory? projectDirectory]) {
+    try {
+      return hooksDirectory(projectDirectory);
+    } on FileSystemException {
+      return null;
+    }
+  }
+
+  static bool _isSameDirectory(String a, String b) {
+    String canonical(String directory) {
+      try {
+        // e.g. /var and /private/var on macOS
+        directory = Directory(directory).resolveSymbolicLinksSync();
+      } on FileSystemException {
+        // compare the path as given
+      }
+      return path.canonicalize(directory);
+    }
+
+    return canonical(a) == canonical(b);
   }
 
   /// Contents of the [hookType] hook file in [hooksDirectory], or null if

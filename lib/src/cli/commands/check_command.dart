@@ -16,8 +16,8 @@ class CheckCommand {
   /// At least one hook is missing, foreign, outdated or stale.
   static const exitOutOfSync = 1;
 
-  /// The check could not run: no dart_husky.yaml, an invalid one, or no git
-  /// hooks folder.
+  /// The check could not run: no dart_husky.yaml, an invalid one, or not
+  /// run from the root of a git repository.
   static const exitCannotCheck = 2;
 
   static const _installCommand = 'dart run dart_husky install';

@@ -113,13 +113,13 @@ dart run dart_husky check
 
 ### Checking hooks in scripts
 
-`check` compares every hook in `.git/hooks/` with what `install` would write today, prints one line per hook, and reports the result through its exit code:
+`check` compares every hook in your hooks folder with what `install` would write today, prints one line per hook, and reports the result through its exit code:
 
 | Exit code | Meaning |
 |---|---|
 | `0` | Every configured hook is installed and up to date, and no leftover dart_husky hooks remain |
 | `1` | At least one hook is missing, foreign (not written by dart_husky), outdated, or stale (installed but no longer in `dart_husky.yaml`). `dart run dart_husky install` fixes it, replacing any foreign hook |
-| `2` | The check couldn't run: no `dart_husky.yaml`, an invalid one, or no `.git/hooks` folder (not a git repository) |
+| `2` | The check couldn't run: no `dart_husky.yaml`, an invalid one, or not run from the root of a git repository |
 
 ```
 $ dart run dart_husky check
@@ -334,7 +334,9 @@ you run: git commit
                                              └── any fail → commit blocked ❌
 ```
 
-`dart_husky install` writes a small shell script into `.git/hooks/` for each configured hook. The script detects whether to use `dart` or `fvm dart` automatically.
+`dart_husky install` writes a small shell script for each configured hook into the folder git reads hooks from: `.git/hooks/` by default, or [`core.hooksPath`](https://git-scm.com/docs/githooks) if you set it. The script detects whether to use `dart` or `fvm dart` automatically.
+
+Run dart_husky from the root of your repository. In a linked worktree (`git worktree add`), run it from the worktree's root. By default, worktrees share the main repository's hooks, so one install covers all of them.
 
 ---
 

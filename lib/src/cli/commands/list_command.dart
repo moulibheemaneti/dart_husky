@@ -11,7 +11,7 @@ class ListCommand {
     final directory = projectDirectory ?? Directory.current;
     final config = ConfigParser.parse(projectDirectory: directory);
     // Unlike check, list still works outside a git repository.
-    final hooksDirectory = Directory(HookInstaller.hooksPath(directory));
+    final hooksDirectory = HookInstaller.findHooksDirectory(directory);
 
     if (config.hooks.isEmpty) {
       print('No hooks configured in dart_husky.yaml');
@@ -25,7 +25,9 @@ class ListCommand {
       final hookConfig = entry.value;
       final status = HookStatus.of(
         hookType,
-        contents: HookInstaller.readHook(hooksDirectory, hookType),
+        contents: hooksDirectory == null
+            ? null
+            : HookInstaller.readHook(hooksDirectory, hookType),
         isConfigured: true,
       );
 

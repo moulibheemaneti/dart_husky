@@ -6,7 +6,10 @@ import 'package:dart_husky/src/cli/commands/install_command.dart';
 import 'package:dart_husky/src/cli/commands/list_command.dart';
 import 'package:dart_husky/src/config/config_model.dart';
 import 'package:dart_husky/src/hooks/hook_installer.dart';
+import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
+
+import 'support/git.dart';
 
 const _config = '''
 pre-commit:
@@ -37,8 +40,9 @@ void main() {
     await project.delete(recursive: true);
   });
 
-  int check() {
-    return CheckCommand(out: out, err: err).run(projectDirectory: project);
+  int check([Directory? directory]) {
+    return CheckCommand(out: out, err: err)
+        .run(projectDirectory: directory ?? project);
   }
 
   List<String> lines(StringBuffer buffer) {
@@ -56,7 +60,7 @@ void main() {
 
   group('CheckCommand in a git repository', () {
     setUp(() async {
-      await _runGit(project.path, ['init']);
+      await initRepository(project.path);
       // git creates this from its templates; make sure it exists regardless
       Directory('${project.path}/.git/hooks').createSync(recursive: true);
       writeConfig(_config);
@@ -209,21 +213,133 @@ void main() {
   });
 
   group('CheckCommand outside a git repository', () {
-    test('exits 2 when there is no .git/hooks folder', () {
+    test('exits 2 when the project is not a git repository', () {
       writeConfig(_config);
 
       expect(check(), CheckCommand.exitCannotCheck);
       expect(out.toString(), isEmpty);
       expect(lines(err), [
-        'dart_husky check: No .git/hooks directory found. '
-            'Are you in a git repository?',
+        'dart_husky check: Not a git repository. '
+            'Run dart_husky from the root of your git repository.',
       ]);
+    });
+  });
+
+  group('CheckCommand hooks folder', () {
+    setUp(() async {
+      await initRepository(project.path);
+      writeConfig(_config);
+    });
+
+    test('uses the main repository hooks in a linked worktree', () async {
+      await runGit(project.path, ['add', 'dart_husky.yaml']);
+      await runGit(project.path, ['commit', '-m', 'add config']);
+      final worktree = Directory(path.join(project.path, 'worktrees', 'wt'));
+      await runGit(project.path, ['worktree', 'add', worktree.path]);
+
+      _inDirectory(worktree, () => InstallCommand().run());
+
+      // git shares hooks between worktrees
+      expect(
+        File(path.join(project.path, '.git', 'hooks', 'pre-commit')),
+        _exists,
+      );
+      expect(check(worktree), CheckCommand.exitInSync);
+      expect(check(project), CheckCommand.exitInSync);
+      expect(lines(out), [
+        'pre-commit: in sync',
+        'commit-msg: in sync',
+        'pre-commit: in sync',
+        'commit-msg: in sync',
+      ]);
+      expect(err.toString(), isEmpty);
+    });
+
+    test('uses a relative core.hooksPath', () async {
+      await runGit(project.path, ['config', 'core.hooksPath', '.githooks']);
+
+      expect(check(), CheckCommand.exitOutOfSync);
+
+      _inDirectory(project, () => InstallCommand().run());
+
+      expect(File(path.join(project.path, '.githooks', 'pre-commit')), _exists);
+      expect(
+        File(path.join(project.path, '.git', 'hooks', 'pre-commit')),
+        isNot(_exists),
+      );
+      out.clear();
+      expect(check(), CheckCommand.exitInSync);
+      expect(lines(out), ['pre-commit: in sync', 'commit-msg: in sync']);
+    });
+
+    test('uses an absolute core.hooksPath', () async {
+      final hooks = path.join(project.path, 'shared', 'hooks');
+      await runGit(project.path, ['config', 'core.hooksPath', hooks]);
+
+      _inDirectory(project, () => InstallCommand().run());
+
+      expect(File(path.join(hooks, 'commit-msg')), _exists);
+      expect(check(), CheckCommand.exitInSync);
+    });
+
+    test('reports hooks as missing when the hooks folder does not exist',
+        () async {
+      await runGit(project.path, ['config', 'core.hooksPath', 'no-such-dir']);
+
+      expect(check(), CheckCommand.exitOutOfSync);
+      expect(lines(out), [
+        'pre-commit: missing (configured but not installed)$_fix',
+        'commit-msg: missing (configured but not installed)$_fix',
+      ]);
+    });
+
+    test('exits 2 when run from a subdirectory of the repository', () {
+      final subdirectory = Directory(path.join(project.path, 'packages', 'a'))
+        ..createSync(recursive: true);
+      File(path.join(subdirectory.path, 'dart_husky.yaml'))
+          .writeAsStringSync(_config);
+
+      expect(check(subdirectory), CheckCommand.exitCannotCheck);
+      expect(out.toString(), isEmpty);
+      expect(
+        lines(err).single,
+        startsWith('dart_husky check: Run dart_husky from the root of your '
+            'git repository: '),
+      );
+    });
+
+    test('ignores GIT_DIR exported by a running git hook', () async {
+      _inDirectory(project, () => InstallCommand().run());
+
+      // Inside a hook, git sets GIT_DIR. Point it at a repository without
+      // hooks: if check followed it, it would report them as missing.
+      final other = Directory(path.join(project.path, 'other'))..createSync();
+      await initRepository(other.path);
+
+      final result = await Process.run(
+        Platform.resolvedExecutable,
+        [
+          '--packages=${path.absolute('.dart_tool', 'package_config.json')}',
+          path.absolute('bin', 'dart_husky.dart'),
+          'check',
+        ],
+        workingDirectory: project.path,
+        environment: {
+          ...isolatedGitEnvironment(),
+          'GIT_DIR': path.join(other.path, '.git'),
+        },
+        includeParentEnvironment: false,
+      );
+
+      expect(result.stderr, isEmpty);
+      expect(result.stdout, 'pre-commit: in sync\ncommit-msg: in sync\n');
+      expect(result.exitCode, CheckCommand.exitInSync);
     });
   });
 
   group('ListCommand install status', () {
     setUp(() async {
-      await _runGit(project.path, ['init']);
+      await initRepository(project.path);
       Directory('${project.path}/.git/hooks').createSync(recursive: true);
       writeConfig(_config);
     });
@@ -277,19 +393,4 @@ void _inDirectory(Directory directory, void Function() body) {
   );
 }
 
-Future<void> _runGit(String workingDirectory, List<String> arguments) async {
-  final result = await Process.run(
-    'git',
-    arguments,
-    workingDirectory: workingDirectory,
-  );
-
-  if (result.exitCode != 0) {
-    throw ProcessException(
-      'git',
-      arguments,
-      result.stderr.toString(),
-      result.exitCode,
-    );
-  }
-}
+final _exists = predicate<File>((file) => file.existsSync(), 'exists');
