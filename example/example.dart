@@ -6,6 +6,7 @@
 /// ```sh
 /// dart run dart_husky install     # write the hooks into .git/hooks/
 /// dart run dart_husky list        # show configured hooks and install status
+/// dart run dart_husky check       # exit 0 if hooks match dart_husky.yaml
 /// dart run dart_husky run pre-commit  # trigger a hook manually
 /// dart run dart_husky uninstall   # remove every installed hook
 /// ```

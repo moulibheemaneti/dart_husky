@@ -106,6 +106,37 @@ dart run dart_husky run pre-commit
 
 # List configured hooks and install status
 dart run dart_husky list
+
+# Check that the installed hooks match dart_husky.yaml (for scripts and CI)
+dart run dart_husky check
+```
+
+### Checking hooks in scripts
+
+`check` compares every hook in your hooks folder with what `install` would write today, prints one line per hook, and reports the result through its exit code:
+
+| Exit code | Meaning |
+|---|---|
+| `0` | Every configured hook is installed and up to date, and no leftover dart_husky hooks remain |
+| `1` | At least one hook is missing, foreign (not written by dart_husky), outdated, stale (installed but no longer in `dart_husky.yaml`), or not executable (git skips it). `dart run dart_husky install` fixes it, replacing any foreign hook |
+| `2` | The check couldn't run: no `dart_husky.yaml`, an invalid one, or not run from the root of a git repository |
+
+```
+$ dart run dart_husky check
+pre-commit: in sync
+commit-msg: outdated (differs from what install would write) - run "dart run dart_husky install" to fix
+```
+
+Use it in a setup script to install hooks only when they need it:
+
+```sh
+#!/bin/sh
+dart run dart_husky check
+case $? in
+  0) ;;                             # hooks are up to date
+  1) dart run dart_husky install ;; # missing or out of date
+  *) exit 1 ;;                      # couldn't check, reason printed above
+esac
 ```
 
 ---
@@ -303,7 +334,9 @@ you run: git commit
                                              └── any fail → commit blocked ❌
 ```
 
-`dart_husky install` writes a small shell script into `.git/hooks/` for each configured hook. The script detects whether to use `dart` or `fvm dart` automatically.
+`dart_husky install` writes a small shell script for each configured hook into the folder git reads hooks from: `.git/hooks/` by default, or [`core.hooksPath`](https://git-scm.com/docs/githooks) if you set it. The script detects whether to use `dart` or `fvm dart` automatically.
+
+Run dart_husky from the root of your repository. In a linked worktree (`git worktree add`), run it from the worktree's root. By default, worktrees share the main repository's hooks, so one install covers all of them.
 
 ---
 

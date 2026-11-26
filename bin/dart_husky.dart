@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:args/args.dart';
+import 'package:dart_husky/src/cli/commands/check_command.dart';
 import 'package:dart_husky/src/cli/commands/install_command.dart';
 import 'package:dart_husky/src/cli/commands/list_command.dart';
 import 'package:dart_husky/src/cli/commands/run_command.dart';
@@ -9,6 +12,7 @@ const _description = {
   'uninstall': 'Remove all installed git hooks',
   'run': 'Run a specific hook manually',
   'list': 'List all configured hooks',
+  'check': 'Check that installed hooks match dart_husky.yaml',
 };
 
 void main(List<String> arguments) async {
@@ -35,6 +39,8 @@ void main(List<String> arguments) async {
       await RunCommand().run(hookName, arg: arg);
     case 'list':
       ListCommand().run();
+    case 'check':
+      exitCode = CheckCommand().run();
     default:
       _printHelp();
   }

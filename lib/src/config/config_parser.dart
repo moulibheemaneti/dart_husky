@@ -12,20 +12,37 @@ class ConfigParser {
 
   /// Parses raw YAML content as a string — useful for tests
   static GitHooksConfig parseString(String content) {
-    final yaml = loadYaml(content) as YamlMap;
-    return _parseConfig(yaml);
+    return _parseContent(content);
   }
 
   /// Finds and parses dart_husky.yaml from the project root
-  static GitHooksConfig parse() {
-    final configFile = _findConfigFile();
-    final content = configFile.readAsStringSync();
-    final yaml = loadYaml(content) as YamlMap;
-    return _parseConfig(yaml);
+  /// ([projectDirectory], defaulting to [Directory.current]).
+  static GitHooksConfig parse({Directory? projectDirectory}) {
+    final configFile = _findConfigFile(projectDirectory ?? Directory.current);
+    return _parseContent(configFile.readAsStringSync());
   }
 
-  static File _findConfigFile() {
-    final configPath = path.join(Directory.current.path, _configFileName);
+  /// Throws a [YamlException] for invalid YAML and a [FormatException] for
+  /// YAML that is not a valid dart_husky config.
+  static GitHooksConfig _parseContent(String content) {
+    final yaml = loadYaml(content);
+
+    if (yaml is! YamlMap) {
+      throw FormatException(
+        'dart_husky.yaml must be a map of hook names to hook settings.',
+      );
+    }
+
+    try {
+      return _parseConfig(yaml);
+    } on TypeError catch (e) {
+      // A value of the wrong type, e.g. `pre-commit: true`
+      throw FormatException('dart_husky.yaml has an unexpected value: $e');
+    }
+  }
+
+  static File _findConfigFile(Directory projectDirectory) {
+    final configPath = path.join(projectDirectory.path, _configFileName);
     final file = File(configPath);
 
     if (!file.existsSync()) {
