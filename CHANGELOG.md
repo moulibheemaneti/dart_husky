@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0](https://github.com/moulibheemaneti/dart_husky/compare/dart_husky-v1.9.5...dart_husky-v1.10.0) (2026-11-26)
+
+
+### Features
+
+* **cli:** add check command and support worktrees and core.hooksPath ([#35](https://github.com/moulibheemaneti/dart_husky/issues/35)) ([1da1d67](https://github.com/moulibheemaneti/dart_husky/commit/1da1d675e52550c8a9ff5cee720f987f9ddd4e73))
+
 ## [1.9.5](https://github.com/moulibheemaneti/dart_husky/compare/dart_husky-v1.9.4...dart_husky-v1.9.5) (2026-11-12)
 
 
